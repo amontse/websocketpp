@@ -33,6 +33,7 @@
 #include <string>
 
 #include <websocketpp/http/parser.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace websocketpp {
 namespace http {
@@ -164,24 +165,33 @@ inline void request::set_uri(std::string const & uri) {
 inline void request::process(std::string::iterator begin, std::string::iterator
     end)
 {
-    std::string::iterator cursor_start = begin;
-    std::string::iterator cursor_end = std::find(begin,end,' ');
+    boost::char_separator<char> sep{" "};
+    boost::tokenizer<boost::char_separator<char>> tok{begin, end, sep};
+    auto iter = tok.begin();
+    if (iter != tok.end())
+    {
+        set_method(*iter);
+        ++iter;
 
-    if (cursor_end == end) {
+        if (iter != tok.end())
+        {
+            set_uri(*iter);
+            ++iter;
+
+            if (iter != tok.end())
+            {
+                set_version(*iter);
+            }
+        }
+        else
+        {
+            throw exception("Invalid request line2",status_code::bad_request);
+        }
+    }
+    else
+    {
         throw exception("Invalid request line1",status_code::bad_request);
     }
-
-    set_method(std::string(cursor_start,cursor_end));
-
-    cursor_start = cursor_end+1;
-    cursor_end = std::find(cursor_start,end,' ');
-
-    if (cursor_end == end) {
-        throw exception("Invalid request line2",status_code::bad_request);
-    }
-
-    set_uri(std::string(cursor_start,cursor_end));
-    set_version(std::string(cursor_end+1,end));
 }
 
 } // namespace parser
